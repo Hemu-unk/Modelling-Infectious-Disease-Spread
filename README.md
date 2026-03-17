@@ -262,4 +262,8 @@ Possible extensions include:
 
 ## License
 
+<<<<<<< HEAD
 This project is provided for educational and research purposes.
+=======
+This project is provided for educational and research purposes.
+>>>>>>> 8776d5c (Fix)
