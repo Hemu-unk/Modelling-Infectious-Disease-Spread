@@ -1,0 +1,72 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 3258 >>
+stream
+BT /F2 18 Tf 1 0 0 1 40 770 Tm (Modelling Infectious Disease Spread) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 750 Tm (One-page repo summary) Tj ET
+40 742 m 572 742 l S
+BT /F2 12 Tf 1 0 0 1 40 720 Tm (What It Is) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 704 Tm (Flask app for exploring epidemic scenarios with an agent-based SIR simulator and ML models) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 691 Tm (that estimate peak infections, outbreak duration, and total infections from user inputs.) Tj ET
+BT /F2 12 Tf 1 0 0 1 40 665 Tm (Who It's For) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 649 Tm (Primary persona inferred from the repo: students, researchers, or demo users testing how) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 636 Tm (parameter changes affect outbreak forecasts in a browser.) Tj ET
+BT /F2 12 Tf 1 0 0 1 40 610 Tm (What It Does) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 594 Tm (- Collects seven outbreak parameters in a browser form.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 581 Tm (- Returns ML-predicted peak infected population, outbreak duration, and total infected population.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 568 Tm (- Exposes a JSON /predict API for programmatic predictions.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 555 Tm (- Exposes a JSON /simulate API that returns SIR timelines and optional agent snapshots.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 542 Tm (- Shows a results dashboard with KPI cards, charts, and a browser-side spatial animation.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 529 Tm (- Validates inputs and exposes a simple /health endpoint.) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 516 Tm (- Includes scripts to generate training data and train/save regression models.) Tj ET
+BT /F2 12 Tf 1 0 0 1 40 490 Tm (How It Works) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 474 Tm (Frontend: Jinja templates in /templates plus static CSS and Chart.js render the form and dashboard.) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 461 Tm (Backend: app.py serves /, /web-predict, /predict, /simulate, and /health via Flask + flask-cors.) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 448 Tm (ML layer: ml_utils.py builds a pandas feature row and loads three joblib models from outputs/models.) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 435 Tm (Simulation: simulator/simulation.py runs a seeded agent-based model and returns timeline + summary.) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 422 Tm (Data flow: user input -> validation -> model load/predict -> rendered results; web results also run) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 409 Tm (the Python simulator for timeline data while the page animates a separate JavaScript ABM view.) Tj ET
+BT /F1 10 Tf 1 0 0 1 40 396 Tm (Persistence/auth/deployment details: Not found in repo.) Tj ET
+BT /F2 12 Tf 1 0 0 1 40 370 Tm (How To Run) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 354 Tm (1. Install dependencies: pip install -r requirements.txt) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 341 Tm (2. Start the app: python app.py) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 328 Tm (3. Open http://127.0.0.1:5000/) Tj ET
+BT /F1 10 Tf 1 0 0 1 52 315 Tm (4. If model files are missing, run: python train_models.py --data-path outputs/simulation_training_data.csv) Tj ET
+40 295 m 572 295 l S
+BT /F1 9 Tf 1 0 0 1 40 280 Tm (Evidence sources: README.md, app.py, ml_utils.py, simulator/simulation.py, train_models.py,) Tj ET
+BT /F1 9 Tf 1 0 0 1 40 268 Tm (templates/index.html, templates/results.html, requirements.txt.) Tj ET
+
+endobj
+7 0 obj
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000321 00000 n 
+0000000396 00000 n 
+0000003696 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+3721
+%%EOF

@@ -484,7 +484,18 @@
       window.addEventListener('resize', () => { resizeCanvas(); });
 
       let agents = [], totalInfected = 0, day = 0, tickCount = 0;
-      let animId = null, paused = false;
+      let animId = null, paused = false, completed = false;
+
+      function getCounts() {
+        let cS = 0, cI = 0, cR = 0, cV = 0;
+        for (const a of agents) {
+          if (a.state === 'S') cS++;
+          else if (a.state === 'I') cI++;
+          else if (a.state === 'R') cR++;
+          else cV++;
+        }
+        return { cS, cI, cR, cV };
+      }
 
       function initAgents() {
         agents = [];
@@ -509,6 +520,7 @@
             timer: state === 'I' ? SIM.RECOVERY : 0,
           });
         }
+        completed = false;
         // Reset epidemic curve and KPI cards
         if (typeof window._onSimReset === 'function') window._onSimReset();
       }
@@ -558,11 +570,26 @@
           }
         }
 
+        const { cS, cI, cR, cV } = getCounts();
+
         // Notify epidemic curve on each day transition
-        if (day !== prevDay) {
-          let cS = 0, cI = 0, cR = 0;
-          for (const a of agents) { if (a.state==='S') cS++; else if (a.state==='I') cI++; else if (a.state==='R') cR++; }
-          if (typeof window._onSimDay === 'function') window._onSimDay(day, cS, cI, cR, totalInfected);
+        if (day !== prevDay && typeof window._onSimDay === 'function') {
+          window._onSimDay(day, cS, cI, cR, totalInfected);
+        }
+
+        // Stop simulation as soon as there are no active infections.
+        // This guarantees both the spatial animation and epidemic curve halt together.
+        if (cI === 0) {
+          if (typeof window._onSimDay === 'function' && day !== curveLastDay) {
+            window._onSimDay(day, cS, cI, cR, totalInfected);
+          }
+          completed = true;
+          paused = true;
+          const pauseBtn = document.getElementById('abm-pause');
+          if (pauseBtn) {
+            pauseBtn.textContent = 'Completed';
+            pauseBtn.disabled = true;
+          }
         }
       }
 
@@ -603,8 +630,7 @@
         }
 
         // update counters
-        let cS = 0, cI = 0, cR = 0;
-        for (const a of agents) { if (a.state==='S') cS++; else if (a.state==='I') cI++; else if (a.state==='R') cR++; }
+        const { cS, cI, cR } = getCounts();
         document.getElementById('cnt-s').textContent     = cS;
         document.getElementById('cnt-i').textContent     = cI;
         document.getElementById('cnt-r').textContent     = cR;
@@ -613,7 +639,15 @@
       }
 
       function loop() {
-        if (!paused) { step(); draw(); }
+        if (!paused) {
+          step();
+          draw();
+        }
+        if (completed) {
+          if (animId) clearTimeout(animId);
+          animId = null;
+          return;
+        }
         animId = setTimeout(loop, TICK_MS);
       }
 
@@ -627,12 +661,16 @@
 
       // Controls
       document.getElementById('abm-pause').addEventListener('click', function () {
+        if (completed) return;
         paused = !paused;
         this.textContent = paused ? '▶ Resume' : '⏸ Pause';
       });
       document.getElementById('abm-reset').addEventListener('click', function () {
         paused = false;
-        document.getElementById('abm-pause').textContent = '⏸ Pause';
+        completed = false;
+        const pauseBtn = document.getElementById('abm-pause');
+        pauseBtn.textContent = '⏸ Pause';
+        pauseBtn.disabled = false;
         startSim();
       });
 
