@@ -111,10 +111,22 @@ def web_predict_results():
             return render_template("index.html", form_values=form_values, errors=errors), 400
 
         predictions = _predict_metrics(payload)
+        sim_result = run_simulation(SimulationConfig(
+            population_size=payload["population_size"],
+            initial_infected=payload["initial_infected"],
+            vaccinated_fraction=payload["vaccination_rate"],
+            movement_step=payload["movement_speed"],
+            infection_radius=payload["interaction_radius"],
+            infection_probability=payload["infection_probability"],
+            recovery_time=payload["recovery_time"],
+            max_steps=300,
+            seed=42,
+        ))
         return render_template(
             "results.html",
             form_values=form_values,
             predictions=predictions,
+            timeline=sim_result["timeline"],
         )
     except (TypeError, ValueError):
         return (
