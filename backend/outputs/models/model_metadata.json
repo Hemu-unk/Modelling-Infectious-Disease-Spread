@@ -1,0 +1,21 @@
+{
+  "feature_columns": [
+    "population_size",
+    "infection_probability",
+    "recovery_time",
+    "movement_speed",
+    "interaction_radius",
+    "vaccination_rate",
+    "initial_infected"
+  ],
+  "target_columns": [
+    "peak_infected_population",
+    "outbreak_duration",
+    "total_infected_population"
+  ],
+  "best_algorithms": {
+    "peak_infected_population": "random_forest",
+    "outbreak_duration": "linear_regression",
+    "total_infected_population": "random_forest"
+  }
+}
