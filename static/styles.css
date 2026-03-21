@@ -71,7 +71,7 @@ body {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.42rem;
+  gap: 0.75rem;
 }
 
 .left-stack .form-panel {
@@ -189,7 +189,7 @@ body {
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: 0.42rem;
+  gap: 0.75rem;
 }
 
 .layout--with-sim .spatial-panel {
