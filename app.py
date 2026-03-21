@@ -98,6 +98,7 @@ def web_predict_form():
         "index.html",
         form_values=dict(DEFAULT_FORM_VALUES),
         errors=[],
+        show_simulation=False,
     )
 
 
@@ -108,25 +109,18 @@ def web_predict_results():
         payload = _coerce_payload(form_values)
         errors = _validate_payload(payload)
         if errors:
-            return render_template("index.html", form_values=form_values, errors=errors), 400
+            return render_template(
+                "index.html",
+                form_values=form_values,
+                errors=errors,
+                show_simulation=False,
+            ), 400
 
-        predictions = _predict_metrics(payload)
-        sim_result = run_simulation(SimulationConfig(
-            population_size=payload["population_size"],
-            initial_infected=payload["initial_infected"],
-            vaccinated_fraction=payload["vaccination_rate"],
-            movement_step=payload["movement_speed"],
-            infection_radius=payload["interaction_radius"],
-            infection_probability=payload["infection_probability"],
-            recovery_time=payload["recovery_time"],
-            max_steps=300,
-            seed=42,
-        ))
         return render_template(
-            "results.html",
+            "index.html",
             form_values=form_values,
-            predictions=predictions,
-            timeline=sim_result["timeline"],
+            errors=[],
+            show_simulation=True,
         )
     except (TypeError, ValueError):
         return (
@@ -134,6 +128,7 @@ def web_predict_results():
                 "index.html",
                 form_values=form_values,
                 errors=["Enter valid numeric values for all fields."],
+                show_simulation=False,
             ),
             400,
         )
@@ -143,6 +138,7 @@ def web_predict_results():
                 "index.html",
                 form_values=form_values,
                 errors=[f"{str(exc)}. Train models first using train_models.py."],
+                show_simulation=False,
             ),
             400,
         )

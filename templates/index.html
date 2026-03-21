@@ -6,21 +6,34 @@
   <title>Outbreak Predictor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="bg-shape bg-shape-a"></div>
   <div class="bg-shape bg-shape-b"></div>
 
-  <main class="layout">
+  <script>
+    (function () {
+      const navEntries = performance.getEntriesByType('navigation');
+      const navType = navEntries.length ? navEntries[0].type : '';
+      if (navType === 'reload') {
+        sessionStorage.removeItem('runPredictionTriggered');
+        window.location.replace('/');
+      }
+    })();
+  </script>
+
+  <main class="layout layout--with-sim">
     <section class="panel hero">
-      <p class="eyebrow">Epidemic Forecast MVP</p>
-      <h1>Predict outbreak outcomes instantly</h1>
-      <p class="lead">Enter simulation settings and get model-estimated peak infections, outbreak duration, and total infections in one click.</p>
+      <h1>Agent Based Disease Simulation</h1>
+      <p class="lead">Run a live agent based outbreak simulation with adjustable parameters and synchronized S/I/R/V metrics to see how transmission, recovery, movement, and vaccination affect outcomes.</p>
     </section>
 
-    <section class="panel form-panel">
+    <section class="left-stack">
+
+    <section class="panel form-panel input-panel">
       {% if errors %}
       <div class="alert" role="alert">
         <strong>Check your input:</strong>
@@ -32,7 +45,7 @@
       </div>
       {% endif %}
 
-      <form method="post" action="/web-predict" class="grid-form">
+      <form id="predict-form" method="post" action="/web-predict" class="grid-form">
         <label>
           Population Size
           <input type="number" name="population_size" min="1" required value="{{ form_values.population_size }}">
@@ -70,12 +83,577 @@
 
         <button type="submit">Run Prediction</button>
       </form>
+
     </section>
 
-    <section class="panel results-panel">
-      <h2>Predicted Results</h2>
-      <p class="placeholder">Submit the form to open a dedicated results page with outbreak predictions.</p>
+    <section class="panel analytics-panel">
+      <div class="input-stats">
+        <div class="abm-stat abm-stat--s">
+          <div class="counter-ring" data-ring="s" style="--ring-color:#2166AC; --p:0;">
+            <span class="counter-ring-value" id="cnt-s">0</span>
+          </div>
+          <p class="abm-stat-label">Susceptible</p>
+        </div>
+        <div class="abm-stat abm-stat--i">
+          <div class="counter-ring" data-ring="i" style="--ring-color:#D6604D; --p:0;">
+            <span class="counter-ring-value" id="cnt-i">0</span>
+          </div>
+          <p class="abm-stat-label">Current Infected</p>
+        </div>
+        <div class="abm-stat abm-stat--r">
+          <div class="counter-ring" data-ring="r" style="--ring-color:#4DAC26; --p:0;">
+            <span class="counter-ring-value" id="cnt-r">0</span>
+          </div>
+          <p class="abm-stat-label">Recovered</p>
+        </div>
+        <div class="abm-stat">
+          <div class="counter-ring" data-ring="total" style="--ring-color:#5F9598; --p:0;">
+            <span class="counter-ring-value" id="cnt-total">0</span>
+          </div>
+          <p class="abm-stat-label">Total Infected</p>
+        </div>
+        <div class="abm-stat">
+          <div class="counter-ring" data-ring="day" style="--ring-color:#1D546D; --p:0;">
+            <span class="counter-ring-value" id="cnt-day">0</span>
+          </div>
+          <p class="abm-stat-label">Day</p>
+        </div>
+      </div>
+
+      <section class="milestone-panel">
+        <h2>State Counts at Key Milestones</h2>
+        <div class="milestone-chart-wrap">
+          <canvas id="milestoneBarChart"></canvas>
+        </div>
+      </section>
+    </section>
+
+    </section>
+
+    <section class="sim-stack">
+      <section class="panel spatial-panel">
+        <div class="spatial-header">
+          <div>
+            <h2>Spatial Agent Simulation <span class="sim-badge">Live Simulation</span></h2>
+          </div>
+          <div class="spatial-controls">
+            <button id="abm-pause" type="button" class="abm-btn">Pause</button>
+            <button id="abm-reset" type="button" class="abm-btn abm-btn--ghost">Reset</button>
+          </div>
+        </div>
+
+        <div class="spatial-body">
+          <canvas id="abmCanvas" class="abm-canvas"></canvas>
+        </div>
+      </section>
+
+      <section class="panel epicurve-panel">
+        <h2>Epidemic Curve <span class="sim-badge">Live Simulation</span></h2>
+        <div class="chart-wrap chart-wrap--curve">
+          <canvas id="epicurveChart"></canvas>
+        </div>
+      </section>
     </section>
   </main>
+
+  <script>
+    const predictForm = document.getElementById('predict-form');
+    if (predictForm) {
+      predictForm.addEventListener('submit', function () {
+        sessionStorage.setItem('runPredictionTriggered', '1');
+      });
+    }
+  </script>
+
+  <script>
+    const popSize = {{ form_values.population_size }};
+    const liveState = { day: 0, peakVal: 0, peakDay: 0, peakIdx: -1 };
+    let curveLastDay = -1;
+
+    const liveDayPlugin = {
+      id: 'liveDayPlugin',
+      afterDraw(chart) {
+        if (!chart.data.labels.length) return;
+        const { ctx, chartArea } = chart;
+
+        if (liveState.peakIdx >= 0 && liveState.peakIdx < chart.data.labels.length) {
+          const pMeta = chart.getDatasetMeta(1);
+          const pPt = pMeta.data[liveState.peakIdx];
+          if (pPt) {
+            const px = pPt.x;
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 4]);
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = 'rgba(214,96,77,0.5)';
+            ctx.moveTo(px, chartArea.top + 20);
+            ctx.lineTo(px, chartArea.bottom);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
+        }
+      }
+    };
+
+    const epicurveChart = new Chart(document.getElementById('epicurveChart'), {
+      type: 'line',
+      plugins: [liveDayPlugin],
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Susceptible',
+            data: [],
+            borderColor: '#2166AC',
+            backgroundColor: 'rgba(33,102,172,0.08)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2.0,
+            borderDash: [6, 3],
+            pointRadius: 0,
+          },
+          {
+            label: 'Infected',
+            data: [],
+            borderColor: '#D6604D',
+            backgroundColor: 'rgba(214,96,77,0.11)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2.8,
+            pointRadius: 0,
+          },
+          {
+            label: 'Recovered / Immune',
+            data: [],
+            borderColor: '#4DAC26',
+            backgroundColor: 'rgba(77,172,38,0.08)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2.2,
+            pointRadius: 0,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: { family: 'Rubik', size: 10 },
+              usePointStyle: true,
+              padding: 10,
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { family: 'Rubik', size: 9 }, maxTicksLimit: 16 }
+          },
+          y: {
+            beginAtZero: true,
+            max: popSize,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: { font: { family: 'Rubik', size: 9 } }
+          }
+        }
+      }
+    });
+
+    const milestoneBarChart = new Chart(document.getElementById('milestoneBarChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Day 0', 'Peak Day', 'Final Day'],
+        datasets: [
+          { label: 'Susceptible', data: [0, 0, 0], backgroundColor: 'rgba(33,102,172,0.85)' },
+          { label: 'Infected', data: [0, 0, 0], backgroundColor: 'rgba(214,96,77,0.85)' },
+          { label: 'Recovered', data: [0, 0, 0], backgroundColor: 'rgba(77,172,38,0.85)' },
+          { label: 'Vaccinated', data: [0, 0, 0], backgroundColor: 'rgba(240,192,64,0.9)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 700,
+          easing: 'easeOutCubic',
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: { family: 'Rubik', size: 10 },
+              usePointStyle: true,
+              padding: 10,
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: false,
+            grid: { display: false },
+            ticks: { font: { family: 'Rubik', size: 9 } }
+          },
+          y: {
+            beginAtZero: true,
+            max: popSize,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: { font: { family: 'Rubik', size: 9 } }
+          }
+        }
+      }
+    });
+
+    window._onSimDay = function (day, cS, cI, cR) {
+      if (day === curveLastDay) return;
+      curveLastDay = day;
+
+      epicurveChart.data.labels.push(day);
+      epicurveChart.data.datasets[0].data.push(cS);
+      epicurveChart.data.datasets[1].data.push(cI);
+      epicurveChart.data.datasets[2].data.push(cR);
+
+      liveState.day = day;
+      if (cI > liveState.peakVal) {
+        liveState.peakVal = cI;
+        liveState.peakDay = day;
+        liveState.peakIdx = epicurveChart.data.labels.length - 1;
+      }
+
+      epicurveChart.update('none');
+    };
+
+    window._onSimReset = function () {
+      curveLastDay = -1;
+      liveState.day = 0;
+      liveState.peakVal = 0;
+      liveState.peakDay = 0;
+      liveState.peakIdx = -1;
+      epicurveChart.data.labels = [];
+      epicurveChart.data.datasets[0].data = [];
+      epicurveChart.data.datasets[1].data = [];
+      epicurveChart.data.datasets[2].data = [];
+      epicurveChart.update('none');
+    };
+
+    (function () {
+      const SIM = {
+        N: {{ form_values.population_size }},
+        INFECT_PROB: {{ form_values.infection_probability }},
+        RECOVERY: {{ form_values.recovery_time }} * 6,
+        SPEED: {{ form_values.movement_speed }},
+        RADIUS: {{ form_values.interaction_radius }},
+        VAX_RATE: {{ form_values.vaccination_rate }},
+        INIT_INF: {{ form_values.initial_infected }},
+      };
+
+      const ringCaps = {
+        s: SIM.N,
+        i: SIM.N,
+        r: SIM.N,
+        total: SIM.N,
+        day: Math.max(20, Math.round((SIM.RECOVERY / 6) * 4)),
+      };
+
+      function updateRing(kind, value) {
+        const ring = document.querySelector('[data-ring="' + kind + '"]');
+        if (!ring) return;
+        const cap = ringCaps[kind] || 1;
+        const pct = Math.max(0, Math.min(100, (value / cap) * 100));
+        ring.style.setProperty('--p', pct.toFixed(2));
+      }
+
+      const COLORS = { S: '#2166AC', I: '#D6604D', R: '#4DAC26', V: '#f0c040' };
+      const RADIUS_PX = 4;
+      const TICK_MS = 30;
+
+      const canvas = document.getElementById('abmCanvas');
+      const ctx2 = canvas.getContext('2d');
+
+      function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      let agents = [], totalInfected = 0, day = 0, tickCount = 0;
+      let animId = null, paused = false, completed = false;
+      let hasStarted = false;
+      let milestoneCounts = {
+        day0: { s: 0, i: 0, r: 0, v: 0 },
+        peak: { s: 0, i: 0, r: 0, v: 0 },
+        final: { s: 0, i: 0, r: 0, v: 0 },
+      };
+      let peakInfectedCount = 0;
+
+      function updateMilestoneBarChart(animate = false) {
+        milestoneBarChart.data.datasets[0].data = [milestoneCounts.day0.s, milestoneCounts.peak.s, milestoneCounts.final.s];
+        milestoneBarChart.data.datasets[1].data = [milestoneCounts.day0.i, milestoneCounts.peak.i, milestoneCounts.final.i];
+        milestoneBarChart.data.datasets[2].data = [milestoneCounts.day0.r, milestoneCounts.peak.r, milestoneCounts.final.r];
+        milestoneBarChart.data.datasets[3].data = [milestoneCounts.day0.v, milestoneCounts.peak.v, milestoneCounts.final.v];
+        if (animate) {
+          milestoneBarChart.update();
+        } else {
+          milestoneBarChart.update('none');
+        }
+      }
+
+      function getCounts() {
+        let cS = 0, cI = 0, cR = 0, cV = 0;
+        for (const a of agents) {
+          if (a.state === 'S') cS++;
+          else if (a.state === 'I') cI++;
+          else if (a.state === 'R') cR++;
+          else if (a.state === 'V') cV++;
+        }
+        return { cS, cI, cR, cV };
+      }
+
+      function initAgents() {
+        agents = [];
+        totalInfected = SIM.INIT_INF;
+        day = 0;
+        tickCount = 0;
+
+        const W = canvas.width, H = canvas.height;
+        const vacCount = Math.round(SIM.N * SIM.VAX_RATE);
+
+        for (let i = 0; i < SIM.N; i++) {
+          let state;
+          if (i < SIM.INIT_INF) state = 'I';
+          else if (i < SIM.INIT_INF + vacCount) state = 'V';
+          else state = 'S';
+
+          agents.push({
+            x: Math.random() * (W - RADIUS_PX * 2) + RADIUS_PX,
+            y: Math.random() * (H - RADIUS_PX * 2) + RADIUS_PX,
+            vx: (Math.random() - 0.5) * SIM.SPEED * 2,
+            vy: (Math.random() - 0.5) * SIM.SPEED * 2,
+            state,
+            timer: state === 'I' ? SIM.RECOVERY : 0,
+          });
+        }
+        completed = false;
+        peakInfectedCount = 0;
+        const initialCounts = getCounts();
+        milestoneCounts = {
+          day0: { s: initialCounts.cS, i: initialCounts.cI, r: initialCounts.cR, v: initialCounts.cV },
+          peak: { s: initialCounts.cS, i: initialCounts.cI, r: initialCounts.cR, v: initialCounts.cV },
+          final: { s: initialCounts.cS, i: initialCounts.cI, r: initialCounts.cR, v: initialCounts.cV },
+        };
+        updateMilestoneBarChart();
+        if (typeof window._onSimReset === 'function') window._onSimReset();
+      }
+
+      function step() {
+        const W = canvas.width, H = canvas.height;
+        const radiusSq = (SIM.RADIUS * (W / 100)) ** 2;
+        const prevDay = day;
+        tickCount++;
+        if (tickCount % 6 === 0) day++;
+
+        for (const a of agents) {
+          a.x += a.vx;
+          a.y += a.vy;
+          if (a.x < RADIUS_PX || a.x > W - RADIUS_PX) { a.vx *= -1; a.x = Math.max(RADIUS_PX, Math.min(W - RADIUS_PX, a.x)); }
+          if (a.y < RADIUS_PX || a.y > H - RADIUS_PX) { a.vy *= -1; a.y = Math.max(RADIUS_PX, Math.min(H - RADIUS_PX, a.y)); }
+          a.vx += (Math.random() - 0.5) * 0.15;
+          a.vy += (Math.random() - 0.5) * 0.15;
+          const spd = Math.hypot(a.vx, a.vy);
+          if (spd > SIM.SPEED * 2) { a.vx = a.vx / spd * SIM.SPEED * 2; a.vy = a.vy / spd * SIM.SPEED * 2; }
+        }
+
+        const infected = agents.filter(a => a.state === 'I');
+        for (const s of agents) {
+          if (s.state !== 'S') continue;
+          for (const inf of infected) {
+            const dx = s.x - inf.x, dy = s.y - inf.y;
+            if (dx * dx + dy * dy < radiusSq) {
+              if (Math.random() < SIM.INFECT_PROB / 6) {
+                s.state = 'I';
+                s.timer = SIM.RECOVERY;
+                totalInfected++;
+                break;
+              }
+            }
+          }
+        }
+
+        for (const a of agents) {
+          if (a.state === 'I') {
+            a.timer--;
+            if (a.timer <= 0) a.state = 'R';
+          }
+        }
+
+        const { cS, cI, cR, cV } = getCounts();
+        if (cI >= peakInfectedCount) {
+          peakInfectedCount = cI;
+          milestoneCounts.peak = { s: cS, i: cI, r: cR, v: cV };
+          updateMilestoneBarChart();
+        }
+        if (day !== prevDay && typeof window._onSimDay === 'function') {
+          window._onSimDay(day, cS, cI, cR, totalInfected);
+        }
+
+        if (cI === 0) {
+          milestoneCounts.final = { s: cS, i: cI, r: cR, v: cV };
+          updateMilestoneBarChart(true);
+          if (typeof window._onSimDay === 'function' && day !== curveLastDay) {
+            window._onSimDay(day, cS, cI, cR, totalInfected);
+          }
+          completed = true;
+          paused = true;
+          const pauseBtn = document.getElementById('abm-pause');
+          if (pauseBtn) {
+            pauseBtn.textContent = 'Completed';
+            pauseBtn.disabled = true;
+          }
+        }
+      }
+
+      function draw() {
+        const W = canvas.width, H = canvas.height;
+        ctx2.clearRect(0, 0, W, H);
+
+        ctx2.strokeStyle = 'rgba(0,0,0,0.04)';
+        ctx2.lineWidth = 1;
+        for (let x = 0; x < W; x += 40) { ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, H); ctx2.stroke(); }
+        for (let y = 0; y < H; y += 40) { ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(W, y); ctx2.stroke(); }
+
+        const radiusPx = SIM.RADIUS * (W / 100);
+        for (const a of agents) {
+          if (a.state !== 'I') continue;
+          ctx2.beginPath();
+          ctx2.arc(a.x, a.y, radiusPx, 0, Math.PI * 2);
+          ctx2.fillStyle = 'rgba(214,96,77,0.04)';
+          ctx2.fill();
+          ctx2.strokeStyle = 'rgba(214,96,77,0.18)';
+          ctx2.lineWidth = 0.8;
+          ctx2.stroke();
+        }
+
+        for (const a of agents) {
+          ctx2.beginPath();
+          ctx2.arc(a.x, a.y, RADIUS_PX, 0, Math.PI * 2);
+          ctx2.fillStyle = COLORS[a.state];
+          ctx2.fill();
+          if (a.state === 'I') {
+            ctx2.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx2.lineWidth = 1;
+            ctx2.stroke();
+          }
+        }
+
+        const { cS, cI, cR } = getCounts();
+        document.getElementById('cnt-s').textContent = cS;
+        document.getElementById('cnt-i').textContent = cI;
+        document.getElementById('cnt-r').textContent = cR;
+        document.getElementById('cnt-total').textContent = totalInfected;
+        document.getElementById('cnt-day').textContent = day;
+
+        updateRing('s', cS);
+        updateRing('i', cI);
+        updateRing('r', cR);
+        updateRing('total', totalInfected);
+        updateRing('day', day);
+      }
+
+      function loop() {
+        if (!paused) {
+          step();
+          draw();
+        }
+        if (completed) {
+          if (animId) clearTimeout(animId);
+          animId = null;
+          return;
+        }
+        animId = setTimeout(loop, TICK_MS);
+      }
+
+      function startSim() {
+        if (animId) clearTimeout(animId);
+        hasStarted = true;
+        resizeCanvas();
+        initAgents();
+        draw();
+        loop();
+      }
+
+      function drawEmptyCanvas() {
+        const W = canvas.width, H = canvas.height;
+        ctx2.clearRect(0, 0, W, H);
+        ctx2.strokeStyle = 'rgba(0,0,0,0.04)';
+        ctx2.lineWidth = 1;
+        for (let x = 0; x < W; x += 40) { ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, H); ctx2.stroke(); }
+        for (let y = 0; y < H; y += 40) { ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(W, y); ctx2.stroke(); }
+      }
+
+      function renderEmptyState() {
+        drawEmptyCanvas();
+        document.getElementById('cnt-s').textContent = 0;
+        document.getElementById('cnt-i').textContent = 0;
+        document.getElementById('cnt-r').textContent = 0;
+        document.getElementById('cnt-total').textContent = 0;
+        document.getElementById('cnt-day').textContent = 0;
+        updateRing('s', 0);
+        updateRing('i', 0);
+        updateRing('r', 0);
+        updateRing('total', 0);
+        updateRing('day', 0);
+
+        curveLastDay = -1;
+        liveState.day = 0;
+        liveState.peakVal = 0;
+        liveState.peakDay = 0;
+        liveState.peakIdx = -1;
+        epicurveChart.data.labels = [];
+        epicurveChart.data.datasets[0].data = [];
+        epicurveChart.data.datasets[1].data = [];
+        epicurveChart.data.datasets[2].data = [];
+        epicurveChart.update('none');
+
+        milestoneCounts = {
+          day0: { s: 0, i: 0, r: 0, v: 0 },
+          peak: { s: 0, i: 0, r: 0, v: 0 },
+          final: { s: 0, i: 0, r: 0, v: 0 },
+        };
+        updateMilestoneBarChart();
+      }
+
+      document.getElementById('abm-pause').addEventListener('click', function () {
+        if (!hasStarted) return;
+        if (completed) return;
+        paused = !paused;
+        this.textContent = paused ? 'Resume' : 'Pause';
+      });
+
+      document.getElementById('abm-reset').addEventListener('click', function () {
+        if (!hasStarted) return;
+        paused = false;
+        completed = false;
+        const pauseBtn = document.getElementById('abm-pause');
+        pauseBtn.textContent = 'Pause';
+        pauseBtn.disabled = false;
+        startSim();
+      });
+
+      const shouldStart = sessionStorage.getItem('runPredictionTriggered') === '1';
+      if (shouldStart) {
+        sessionStorage.removeItem('runPredictionTriggered');
+        setTimeout(startSim, 200);
+      } else {
+        resizeCanvas();
+        renderEmptyState();
+      }
+    })();
+  </script>
 </body>
 </html>

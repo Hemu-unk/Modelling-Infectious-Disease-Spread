@@ -6,31 +6,21 @@
   <title>Outbreak Forecast Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body class="results-page">
   <div class="bg-shape bg-shape-a"></div>
   <div class="bg-shape bg-shape-b"></div>
 
   <main class="dash-layout">
 
-    <!-- ── Header ── -->
-    <header class="dash-header panel">
-      <div>
-        <p class="eyebrow">Epidemic Forecast MVP &mdash; Prediction Complete</p>
-        <h1>Outbreak Forecast Dashboard</h1>
-        <p class="lead">ML-estimated metrics for the submitted epidemic scenario.</p>
-      </div>
-      <a class="back-link" href="/">&#8592; New Prediction</a>
-    </header>
-
     <!-- ── Spatial Agent Visualisation ── -->
     <section class="panel spatial-panel">
       <div class="spatial-header">
         <div>
-          <h2>Spatial Agent Simulation <span class="sim-badge">Live</span></h2>
+          <h2>Spatial Agent Simulation <span class="sim-badge">Live Simulation</span></h2>
           <p class="chart-desc">Each dot is an individual moving in 2D space. Infection spreads when a red agent enters the interaction radius of a blue one.</p>
         </div>
         <div class="spatial-controls">
@@ -98,162 +88,31 @@
       </div>
     </section>
 
-    <!-- ── Metric cards ── -->
-    <section class="dash-cards">
-      <article class="kpi-card kpi-peak">
-        <span class="kpi-icon">&#9650;</span>
-        <p class="kpi-label">Peak Infected</p>
-        <p class="kpi-value" id="kpi-peak-val">{{ '%.2f'|format(predictions.peak_infected_population) }}</p>
-        <p class="kpi-sub">peak agents (live sim)</p>
-      </article>
-      <article class="kpi-card kpi-duration">
-        <span class="kpi-icon">&#9202;</span>
-        <p class="kpi-label">Outbreak Duration</p>
-        <p class="kpi-value" id="kpi-duration-val">{{ '%.2f'|format(predictions.outbreak_duration) }}</p>
-        <p class="kpi-sub">days elapsed</p>
-      </article>
-      <article class="kpi-card kpi-total">
-        <span class="kpi-icon">&#128100;</span>
-        <p class="kpi-label">Total Infected</p>
-        <p class="kpi-value" id="kpi-total-val">{{ '%.2f'|format(predictions.total_infected_population) }}</p>
-        <p class="kpi-sub">cumulative infected</p>
-      </article>
-    </section>
-
-    <!-- ── Charts row ── -->
-    <section class="dash-charts">
-      <div class="panel chart-panel">
-        <h2>Predicted Outbreak Metrics</h2>
-        <p class="chart-desc">Comparison of the three key ML-predicted outputs.</p>
-        <div class="chart-wrap">
-          <canvas id="barChart"></canvas>
-        </div>
-      </div>
-
-      <div class="panel chart-panel">
-        <h2>Population Impact</h2>
-        <p class="chart-desc">Estimated share of the population affected by the outbreak.</p>
-        <div class="chart-wrap chart-wrap--pie">
-          <canvas id="pieChart"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Parameters table ── -->
-    <section class="panel params-panel">
-      <h2>Model Input Parameters</h2>
-      <table class="params-table">
-        <thead>
-          <tr><th>Parameter</th><th>Value</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Population Size</td><td>{{ form_values.population_size }}</td><td>Total number of agents in the simulation</td></tr>
-          <tr><td>Infection Probability</td><td>{{ form_values.infection_probability }}</td><td>Chance of transmission per close contact (0&ndash;1)</td></tr>
-          <tr><td>Recovery Time</td><td>{{ form_values.recovery_time }}</td><td>Timesteps until an infected agent recovers</td></tr>
-          <tr><td>Movement Speed</td><td>{{ form_values.movement_speed }}</td><td>Max distance an agent moves per timestep</td></tr>
-          <tr><td>Interaction Radius</td><td>{{ form_values.interaction_radius }}</td><td>Distance within which agents can transmit infection</td></tr>
-          <tr><td>Vaccination Rate</td><td>{{ form_values.vaccination_rate }}</td><td>Fraction of the population vaccinated (0&ndash;1)</td></tr>
-          <tr><td>Initial Infected</td><td>{{ form_values.initial_infected }}</td><td>Number of agents infected at timestep 0</td></tr>
-        </tbody>
-      </table>
+    <section class="right-top">
+      <!-- ── Parameters table ── -->
+      <section class="panel params-panel">
+        <h2>Model Input Parameters</h2>
+        <table class="params-table">
+          <thead>
+            <tr><th>Parameter</th><th>Value</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Population Size</td><td>{{ form_values.population_size }}</td><td>Total number of agents in the simulation</td></tr>
+            <tr><td>Infection Probability</td><td>{{ form_values.infection_probability }}</td><td>Chance of transmission per close contact (0&ndash;1)</td></tr>
+            <tr><td>Recovery Time</td><td>{{ form_values.recovery_time }}</td><td>Timesteps until an infected agent recovers</td></tr>
+            <tr><td>Movement Speed</td><td>{{ form_values.movement_speed }}</td><td>Max distance an agent moves per timestep</td></tr>
+            <tr><td>Interaction Radius</td><td>{{ form_values.interaction_radius }}</td><td>Distance within which agents can transmit infection</td></tr>
+            <tr><td>Vaccination Rate</td><td>{{ form_values.vaccination_rate }}</td><td>Fraction of the population vaccinated (0&ndash;1)</td></tr>
+            <tr><td>Initial Infected</td><td>{{ form_values.initial_infected }}</td><td>Number of agents infected at timestep 0</td></tr>
+          </tbody>
+        </table>
+      </section>
     </section>
 
   </main>
 
   <script>
-    const peak     = {{ predictions.peak_infected_population | round(2) }};
-    const duration = {{ predictions.outbreak_duration | round(2) }};
-    const total    = {{ predictions.total_infected_population | round(2) }};
     const popSize  = {{ form_values.population_size }};
-
-    // ── Bar chart ────────────────────────────────────────────────
-    new Chart(document.getElementById('barChart'), {
-      type: 'bar',
-      data: {
-        labels: ['Peak Infected', 'Outbreak Duration', 'Total Infected'],
-        datasets: [{
-          label: 'Predicted Value',
-          data: [peak, duration, total],
-          backgroundColor: [
-            'rgba(15,118,110,0.75)',
-            'rgba(59,130,246,0.75)',
-            'rgba(194,65,12,0.75)',
-          ],
-          borderColor: [
-            'rgb(15,118,110)',
-            'rgb(59,130,246)',
-            'rgb(194,65,12)',
-          ],
-          borderWidth: 2,
-          borderRadius: 8,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.parsed.y.toFixed(2)}`
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(0,0,0,0.06)' },
-            ticks: { font: { family: 'IBM Plex Mono', size: 11 } }
-          },
-          x: {
-            grid: { display: false },
-            ticks: { font: { family: 'Space Grotesk', size: 12, weight: '500' } }
-          }
-        }
-      }
-    });
-
-    // ── Pie chart ─────────────────────────────────────────────────
-    const infected    = Math.min(total, popSize);
-    const notInfected = Math.max(popSize - infected, 0);
-    new Chart(document.getElementById('pieChart'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Total Infected', 'Not Infected'],
-        datasets: [{
-          data: [infected, notInfected],
-          backgroundColor: [
-            'rgba(194,65,12,0.80)',
-            'rgba(15,118,110,0.70)',
-          ],
-          borderColor: ['rgb(194,65,12)', 'rgb(15,118,110)'],
-          borderWidth: 2,
-          hoverOffset: 8,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              font: { family: 'Space Grotesk', size: 13 },
-              padding: 18
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: ctx => {
-                const pct = ((ctx.parsed / popSize) * 100).toFixed(1);
-                return ` ${ctx.parsed.toFixed(1)} (${pct}%)`;
-              }
-            }
-          }
-        }
-      }
-});
 
     // ── Live Epidemic Curve ─────────────────────────────────────────────────
     // Grows day-by-day in exact sync with the Spatial ABM below.
@@ -286,7 +145,7 @@
             ctx.stroke();
             ctx.setLineDash([]);
             const label = 'Peak  day\u00a0' + liveState.peakDay + '  \u00b7  ' + liveState.peakVal;
-            ctx.font = '600 10px "IBM Plex Mono", monospace';
+            ctx.font = '600 10px "Rubik", sans-serif';
             const tw = ctx.measureText(label).width;
             const ph = 18, pw = tw + 14;
             const plx = Math.min(Math.max(px - pw / 2, chartArea.left + 2), chartArea.right - pw - 2);
@@ -318,7 +177,7 @@
             ctx.moveTo(lx, chartArea.top); ctx.lineTo(lx, chartArea.bottom);
             ctx.stroke();
             const badge = 'Day\u00a0' + liveState.day;
-            ctx.font = '700 10px "IBM Plex Mono", monospace';
+            ctx.font = '700 10px "Rubik", sans-serif';
             const bw  = ctx.measureText(badge).width + 12, bh = 16;
             const blx = Math.min(Math.max(lx - bw / 2, chartArea.left), chartArea.right - bw);
             const bly = chartArea.bottom + 5;
@@ -388,9 +247,9 @@
           legend: {
             position: 'top',
             labels: {
-              font: { family: 'Space Grotesk', size: 12 },
+              font: { family: 'Rubik', size: 10 },
               usePointStyle: true,
-              padding: 20,
+              padding: 10,
             }
           },
           tooltip: {
@@ -402,16 +261,16 @@
         },
         scales: {
           x: {
-            title: { display: true, text: 'Time (days)', font: { family: 'Space Grotesk', size: 12 }, color: '#555' },
+            title: { display: true, text: 'Time (days)', font: { family: 'Rubik', size: 10 }, color: '#555' },
             grid:  { display: false },
-            ticks: { font: { family: 'IBM Plex Mono', size: 10 }, maxTicksLimit: 20 }
+            ticks: { font: { family: 'Rubik', size: 9 }, maxTicksLimit: 16 }
           },
           y: {
-            title: { display: true, text: 'Number of individuals', font: { family: 'Space Grotesk', size: 12 }, color: '#555' },
+            title: { display: true, text: 'Number of individuals', font: { family: 'Rubik', size: 10 }, color: '#555' },
             beginAtZero: true,
             max:  popSize,
             grid: { color: 'rgba(0,0,0,0.06)' },
-            ticks: { font: { family: 'IBM Plex Mono', size: 11 } }
+            ticks: { font: { family: 'Rubik', size: 9 } }
           }
         }
       }
